@@ -1,17 +1,11 @@
 from mprnn.compare import make_dev_from_baseline
 from mprnn.testing import gather_data_time
-
+from mprnn.utils import set_plotting_params
 import pandas as pd
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
 import argparse
-
-mpl.rcParams['figure.dpi'] = 300
-mpl.rcParams['axes.spines.right'] = False
-mpl.rcParams['axes.spines.top'] = False
-plt.rc('font', family='serif')
 
 def get_reward_deviations(blockdata,baseline=None):
     '''
@@ -89,6 +83,7 @@ def plot_violins(totaldf):
     Returns:
         None
     '''
+    set_plotting_params()
     plt.rcParams["font.size"] = 27
     _, ax1 = plt.subplots(1, 1, sharex=True,figsize=(14,8))
     plt.rc('ytick', labelsize='medium')

@@ -2,16 +2,36 @@ import numpy as np
 import pickle
 from pathlib import Path
 import gym
-from neurogym import spaces
-from mprnn.sspagent.a2c_custom import CustomA2C
-from stable_baselines import A2C
-from stable_baselines.common.vec_env import DummyVecEnv
+import json
+import matplotlib.pyplot as plt
+import tensorflow as tf
 
+from neurogym import spaces
 from neurogym.wrappers import pass_reward
+from sklearn.model_selection import ParameterGrid
+from stable_baselines.common.vec_env import DummyVecEnv
+from stable_baselines.common.policies import LstmPolicy
+from stable_baselines import A2C
+
+from mprnn.sspagent.advanced_rnn import AuxLstmPolicy
+from mprnn.sspagent.a2c_custom import CustomA2C
+
+tf.compat.v1.disable_eager_execution()
+
+rng = np.random.default_rng()
+
 BETTER_NAMES = {"lrplayer":"Linear Combination","1":"MP 1st",'all':"MP 1st+2nd",
                 'reversalbandit':"anti-correlated",'patternbandit':"Patterns",
-            'softmaxqlearn':'Softmax QL','epsilonqlearn':'Epsilon-Greedy QL','mimicry':"n-back mimickry"}
+            'softmaxqlearn':'Softmax QL','epsilonqlearn':'$\epsilon$-Greedy QL','mimicry':"n-back mimickry"}
 FILEPATH = Path(__file__).parent.parent.absolute()
+
+def set_plotting_params(fontsize = 15):
+    plt.rcParams['font.size'] = fontsize
+    plt.rcParams['axes.spines.right'] = False
+    plt.rcParams['axes.spines.top'] = False
+    plt.rc('xtick', labelsize='medium')
+    plt.rc('ytick', labelsize='medium')
+    plt.rc('font', family='serif')
 
 def convert_names_short(opps):
     '''
@@ -107,6 +127,158 @@ def get_env(**envdata):
 
     return env
 
+def convert_dist_to_params(params):
+    '''convert opponent_dist_kwargs into a dict of lists, which have the parameters to draw from
+    the input will either be script_kwargs['env']['opponent_params] or overall_params
+    Input:
+        params (dict): from json, dictionary of environment params-- for ease of coding, these have structure of 'opponent':{'parameter':
+                                                                                                {'start':x,'stop':y','step':z}}
+    Output:
+        params (dict): the same, but convert start,stop,step to a list mode.
+    '''
+    list_params = {}
+    opp_params = params['env']['opponents_params']
+    for opp,param_dict in opp_params.items():
+        list_params[opp] = {}
+        for name,st in param_dict.items():
+            start = st['start']
+            stop = st['stop']
+            step = st.get('step',1)
+            values = np.round_(np.arange(start,stop,step),2)
+            list_params[opp][name] = values
+    params['env']['opponents_params'] = list_params
+    return params
+
+def get_env_from_json(params,useparams = True):
+    '''
+    Using parameters, make an environment 
+    Input: 
+        params (dict): the paramters to make the environment from. This should be of structure train_params['env'] 
+        useparams (boolean): whether or not to use the default opponent
+    Output:
+        env (neurogym environment)
+    '''
+    opponent_dist_kwargs = params['opponents_params']
+    opp = rng.choice(params['train_opponents']) #randomly draw at the start
+    if opp == "lrplayer":       
+        #because this doesn't work with the same random draw, we need to specifically draw the parameters
+        opp_kwargs = {}
+        l_choice = rng.choice(opponent_dist_kwargs[opp]['len_choice'])
+        l_outcome = rng.choice(opponent_dist_kwargs[opp]['len_outcome'])
+        draw_random_params = lambda x,data: [rng.choice(data) for _ in range(x)]
+        opp_kwargs['choice_betas'] = draw_random_params(l_choice,opponent_dist_kwargs[opp]['choice_betas'])
+        opp_kwargs['outcome_betas'] = draw_random_params(l_outcome,opponent_dist_kwargs[opp]['outcome_betas'])
+    else:
+        opp_kwargs = {k:rng.choice(v) for k,v in opponent_dist_kwargs[opp].items()}
+    #need to convert eh show_opp parameter to a boolean to input into the model    
+    show_opp = bool(params['show_opp'] in {"true","True","TRUE"})
+    if useparams:
+        env = gym.make('mp-v0',show_opp=show_opp,episodic=True,
+                        reset_time = params['reset_time'],opponent=opp,
+                        opponents = params['train_opponents'],
+                        opp_params = opponent_dist_kwargs,**opp_kwargs)
+    else:
+        env = gym.make('mp-v0',show_opp=show_opp,episodic=True,
+                        reset_time = params['reset_time'],opponent=opp,
+                        **opp_kwargs)
+    env = pass_reward.PassReward(env)
+    env = PassAction(env) #custom passaction that codes as one-hot representation
+    env = DummyVecEnv([lambda: env])
+    return env
+
+def nn_json(env,params):
+    '''
+    Initializes an A2C agent (with SSP as CustomA2C) with the specified environment and parameters
+    Input:
+        env (neurogym environment)
+        params (dict): of the format train_params, must have dictionary argument 'net_params']
+    Returns:
+        model (A2C agent or CustomA2C)
+    '''
+    nn_params = params['net_params']
+    act_funs = {"tanh":tf.nn.tanh, "relu":tf.nn.relu}
+
+    policy_kwargs = {
+            'n_lstm': nn_params['nrec'], 
+            'feature_extraction':"mlp", 
+            "act_fun":act_funs[nn_params['act_fun']],
+            'net_arch':nn_params['net_arch']
+             }
+    if not nn_params['SSP']:
+        nn_params['net_args'].pop('pred_coef', None) #pred_coef is only useful for the SSP agent
+        model = A2C(LstmPolicy, env, verbose=2, lr_schedule = 'constant', \
+                    policy_kwargs = policy_kwargs,
+                    max_grad_norm = 2, **nn_params['net_args']
+                   )
+    else:
+        model = CustomA2C(AuxLstmPolicy, env, verbose=2, lr_schedule = 'constant', \
+                    policy_kwargs = policy_kwargs,
+                    max_grad_norm = 2,obs_pred_index = 0,**nn_params['net_args'] 
+                    #obs_pred_index predicts the 0th index of the state vector (opponent choice)
+                   )
+    return model
+
+def get_env_and_test_opps(runindex):
+    '''
+    As for most tests before, we need to load our environment, and testing opponents
+    runindex (int or path (str with "\\" )): indicating which run number to load our agent from
+    '''
+    if type(runindex) != int and "\\" in runindex: #if we're going into a new directory, list it
+        loc = Path(runindex)
+    else:
+        loc = Path(f"run{runindex}")
+
+    with open(Path(FILEPATH,"data","models",loc,Path("train_params.json") ) ) as f:
+        script_kwargs = json.load(f)
+    train_params = convert_dist_to_params(script_kwargs)
+    test_opponents = []
+    for k,v in train_params['env']['opponents_params'].items(): #add train opponents first
+        if k in {'lrplayer','1','patternbandit'}:
+            test_opponents.append( (k,v) )
+    env = get_env_from_json(train_params['env'],useparams=False)
+    return env,test_opponents
+
+def iterate_over_opponents(test_opponents):
+    '''
+    Given the list of tuples (str,dict) detailing opponents and various parameters,
+    produces a generator (yield) that iterates over all opponent + parameter combos
+    Arguments:
+        test_opponents ((str,dict)): details the name of the opponent in the string and the parameters to iterate over in the dict
+    Yields:
+        (curropp,params): tuple of a particular opponent and it's parameters
+    '''
+    for opp in test_opponents:
+        curropp = opp[0]
+        params = opp[1]
+        #need to modify this for lrplayer because we need to select coefficients
+        #also need to modify this for pattern because we need to select the specific pattern
+        #for lrplayer we need to generate the list of parameters over each combination of lengths
+            #it would be fastest to go with the largest length of everything and then just iterate over that
+            #because 0's in the later positions are equivalent to shorter distance
+        if curropp == "patternbandit":
+            smallest = min(params['length'])
+            largest = max(params['length'])
+            l = list(range(2**(smallest-1),2**largest-1)) 
+            l = [bin(i)[2:] for i in l if i not in [7,16,31,63]]
+            params = {'pattern':l}
+        elif curropp == "lrplayer":
+            #need to sample each possible beta coefficient for each time delay
+            lchoice = max(params['len_choice']) 
+            loutcome = max(params['len_outcome'])
+            choiceparams = {f'c{i}':params['choice_betas'] for i in range(lchoice)}
+            outcomeparams = {f'o{i}':params['outcome_betas'] for i in range(loutcome)}
+            total_coefs = {'choice_betas':[],'outcome_betas':[]}
+            for coefs in ParameterGrid(choiceparams):
+                total_coefs['choice_betas'].append([coefs[f'c{i}'] for i in range(lchoice)])
+            for coefs in ParameterGrid(outcomeparams):
+                total_coefs['outcome_betas'].append([coefs[f'o{i}'] for i in range(loutcome)])
+            total_coefs['b'] = params['b']
+            params = total_coefs
+
+        param_grid = ParameterGrid(params)
+        for params in param_grid:
+            #given these parameters
+            yield (curropp,params) 
 
 class PassAction(gym.Wrapper):
     """Modifies observation by adding the previous action."""

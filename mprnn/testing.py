@@ -8,8 +8,8 @@ import numpy as np
 import tensorflow as tf
 from mprnn.sspagent.a2c_custom import CustomA2C
 
-from mprnn.training import train_env_json,convert_dist_to_params
-from mprnn.utils import TrialTestObject, get_net, get_env, setup_run,FILEPATH
+from mprnn.utils import TrialTestObject, FILEPATH
+from mprnn.utils import get_net, get_env, setup_run,get_env_from_json,convert_dist_to_params
 tf.compat.v1.disable_eager_execution()
 
 def get_ood_opponents(params):
@@ -127,7 +127,7 @@ def iter_step_and_save(env,model,perturb = None,**startdata):
     steps = startdata.get('steps',150)
     acts,rews,states,preds = np.zeros(steps),np.zeros(steps),np.zeros((steps,nrec)),np.zeros(steps)
     opponents,opp_classes,opp_kwargs = [],np.zeros(steps),[]
-    saved_obs = np.zeros((steps,obs.shape[1]))
+    saved_obs = np.zeros((steps,1,obs.shape[-1])) #save all observations, the 1 is in there to make sure it's vectorized
     saved_obs[0] = obs
     states[0] = recurrent_state.reshape(-1)
     for _ in range(steps):
@@ -155,7 +155,7 @@ def iter_step_and_save(env,model,perturb = None,**startdata):
 
     opponents = np.array(opponents)
     opp_kwargs = np.array(opp_kwargs)
-    trialdata = TrialTestObject(acts,rews,states,preds,opponents,opp_classes,opp_kwargs,obs)
+    trialdata = TrialTestObject(acts,rews,states,preds,opponents,opp_classes,opp_kwargs,saved_obs)
     return trialdata
 
 def get_model_states(model,**envdata):
@@ -256,7 +256,7 @@ def test_net(model,env,test_opponents=None,opponent_params=None,
         opponent_params = env.envs[0].opp_params
     params = {"opponents_params":opponent_params, "train_opponents":test_opponents,
                         "reset_time":reset_time,"show_opp":show_opp,'steps':steps_per_block}
-    env = train_env_json(params) #reinitiate an environment with the given parameters and opponents
+    env = get_env_from_json(params) #reinitiate an environment with the given parameters and opponents
     blockdata = loop_get_model_states(env,model,params,nblocks)
     return blockdata
 
@@ -290,7 +290,7 @@ def get_gather_data(runindex,name):
     ood_opponents = get_ood_opponents(train_params)
     ood_params = get_ood_params(train_params,overall_params)
 
-    env = train_env_json(train_params['env'],useparams=True) 
+    env = get_env_from_json(train_params['env'],useparams=True) 
 
     return training_times,train_params,ood_opponents,ood_params,env
 
@@ -343,9 +343,9 @@ def test_specific_opponents(env, model, opponents,nwashout = 30,perturb=None,
             trialdata = iter_step_and_save(env,model,None,**startdata)#this runs one block so we don't need to redraw
             #step_tuple has structure (acts,rews,states,preds,opponents,opp_classes,opp_kwargs,obs)
             #if the opponnent is one of the specific test ones, skip
-            if trialdata.opp_kwargs[0] in opponents_kwargs:
+            if trialdata.opponent_kwargs[0] in opponents_kwargs:
                 continue #using a while loop bc of this guy
-            startdata['_states'] = trialdata.states[-1].reshape(1,trialdata.states[-1].shape[1]) 
+            startdata['_states'] = trialdata.states[-1].reshape(1,trialdata.states[-1].shape[-1]) 
             startdata['obs'] = trialdata.observations[-1]
             i += 1
   
@@ -373,16 +373,15 @@ def test_specific_opponents(env, model, opponents,nwashout = 30,perturb=None,
             #if first_state is not None and all(first_state == step_tuple[2][0]):
                # raise ValueError("not continuous across blocks")
             #acts,rews,states,preds,opponents,opp_classes,opp_kwargs,obs
-            startdata['_states'] = trialdata.states[-1].reshape(1,trialdata.states[-1].shape[1]) 
+            startdata['_states'] = trialdata.states[-1].reshape(1,trialdata.states[-1].shape[-1]) 
             startdata['obs'] = trialdata.observations[-1]
             #reset the state to the last one
             trialobjects.append(trialdata)
         return trialobjects
-    prewashout_trials = test_opponents(opponents)
 
+    prewashout_trials = test_opponents(opponents)
     #washout trials
     washout(nwashout)
-
     postwashout_trials = test_opponents(opponents,breakinpoutcorr) #retest after washout
     
     return prewashout_trials, postwashout_trials
