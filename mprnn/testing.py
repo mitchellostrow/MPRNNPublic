@@ -305,7 +305,7 @@ def gather_data_time(runindex,name,time,nblocks=800):
         blockdata_within (TrialTestObject): block data for tests against the within-training-distribution opponents
         blockdata_ood (TrialTestObject): likewise, but for ood opponents
     '''
-    _,train_params,ood_opponents,ood_params,env = get_gather_data(runindex,name)
+    _,train_params,ood_opponents,_,env = get_gather_data(runindex,name)
     model,_ = get_net(runindex,name,time)
 
     print(f"testing {name} {time}")
@@ -365,7 +365,7 @@ def test_specific_opponents(env, model, opponents,nwashout = 30,perturb=None,
         startdata['breakinpoutloop'] = breakinpoutloop
         for i, opp in enumerate(opponents):
             env.envs[0].clear_data()
-            env.envs[0].draw_opponent(i)
+            env.envs[0].draw_opponent(i) #reset opponent and environment data
             if perturb and perturb['opp'] == i:
                 trialdata = iter_step_and_save(env,model,perturb,**startdata)
             else:
