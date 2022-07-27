@@ -5,7 +5,7 @@ from pathlib import Path
 from scipy.ndimage import gaussian_filter
 
 from mprnn.testing import test_specific_opponents
-from mprnn.utils import get_net, set_plotting_params, get_env_and_test_opps,iterate_over_opponents,convert_names_short
+from mprnn.utils import get_net, set_plotting_params, get_env_and_test_opps
 
 set_plotting_params()
 
@@ -19,7 +19,6 @@ def test_WSLS(args):
             mtype: whether the model is SSP or default A2C
             trainiters: how long the model has traned for
             ntests: how long the model should be tested for
-        opponent_pairs (list(list(str))): list of opponent pairs to be tested on switching
     Returns:
         None
     '''

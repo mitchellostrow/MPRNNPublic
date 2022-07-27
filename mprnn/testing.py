@@ -23,7 +23,7 @@ def get_ood_opponents(params):
     all_strats = set(["lrplayer","1","all","reversalbandit","patternbandit", #set of all strategies, train_opponents \in all_strats
                         "epsilonqlearn","softmaxqlearn","mimicry"])
     used_strats = set(params['env']['train_opponents'])                    
-    return list(all_strats.symmetric_difference(used_strats)) #this is (A intersection B)^C           
+    return list(all_strats.symmetric_difference(used_strats)) #this is (A intersection B)^C  
 
 def get_ood_params(train_params,overall_params):
     '''
@@ -63,8 +63,6 @@ def step_and_save(env,model,**envdata):
         #auxiliary prediction agent gives a tuple of output (action,[pred])
         action,pred = action
         pred = pred.squeeze()
-    if envdata.get('breakinpoutloop',False):
-        action = [np.random.randint(0,2)] #random [0,1]
     obs, reward, dones, _ = env.step(action)
     data = (action,pred,obs,reward,dones,_states)
     return data
@@ -132,8 +130,6 @@ def iter_step_and_save(env,model,perturb = None,**startdata):
     states[0] = recurrent_state.reshape(-1)
     for _ in range(steps):
         envdata = {'obs':obs,'_states':recurrent_state,'dones':dones}
-        #pass the breakinpoutloop boolean (defined in test_specific_opponents) to step_and_save
-        envdata['breakinpoutloop'] = startdata.get('breakinpoutloop',False)
         data = step_and_save(env,model,**envdata)
 
         action,pred,obs,reward,dones,recurrent_state = data
@@ -155,7 +151,8 @@ def iter_step_and_save(env,model,perturb = None,**startdata):
 
     opponents = np.array(opponents)
     opp_kwargs = np.array(opp_kwargs)
-    trialdata = TrialTestObject(acts,rews,states,preds,opponents,opp_classes,opp_kwargs,saved_obs)
+    trialdata = TrialTestObject(acts,rews,states,preds,opps=opponents,
+                            opps_kwargs=opp_kwargs,opp_inds=opp_classes,obs=saved_obs)
     return trialdata
 
 def get_model_states(model,**envdata):
@@ -313,8 +310,7 @@ def gather_data_time(runindex,name,time,nblocks=800):
     blockdata_ood = test_net(model,env,ood_opponents,train_params['env']['opponents_params'],reset_time=env.envs[0].reset_time,nblocks=nblocks)
     return blockdata_within,blockdata_ood
 
-def test_specific_opponents(env, model, opponents,nwashout = 30,perturb=None,
-                            breakinpoutcorr=False):
+def test_specific_opponents(env, model, opponents,nwashout = 30,perturb=None):
     '''
     Tests model on specific block test: 
     opponents[0],opponents[1],opponents[2], large set of random opponents, opponents[0],opponents[1],opponents[2]
@@ -325,8 +321,6 @@ def test_specific_opponents(env, model, opponents,nwashout = 30,perturb=None,
                         'opp': int-- which opponent to perturb (0,1,2)
                         'vector': np.array -- the perturbation vector (adds to the state)
                         'reset': bool --  True if we want to reset activity on this axis to the provided value, false if we just want to add it
-    breakinpoutcorr (bool): in the test set, breaks the input-output correlation by not actually playing the true behavior. 
-        The goal of this is to see whether the opponent can still be identified this way. 
     '''
     ops = copy(opponents)
     env.envs[0].set_testing_opponents(opponents)
@@ -358,11 +352,8 @@ def test_specific_opponents(env, model, opponents,nwashout = 30,perturb=None,
         opponents[perturb['opp']] = opponents[i]
         opponents[i] = op
 
-    def test_opponents(opponents,breakinpoutloop=False):
-        #breakinpoutloop is the placeholder for breakinpoutcorr so we can flip this only during
-        #the test run, thereby allowing the classifier to train properly
+    def test_opponents(opponents):
         trialobjects = []
-        startdata['breakinpoutloop'] = breakinpoutloop
         for i, opp in enumerate(opponents):
             env.envs[0].clear_data()
             env.envs[0].draw_opponent(i) #reset opponent and environment data
@@ -382,7 +373,7 @@ def test_specific_opponents(env, model, opponents,nwashout = 30,perturb=None,
     prewashout_trials = test_opponents(opponents)
     #washout trials
     washout(nwashout)
-    postwashout_trials = test_opponents(opponents,breakinpoutcorr) #retest after washout
+    postwashout_trials = test_opponents(opponents) #retest after washout
     
     return prewashout_trials, postwashout_trials
 
