@@ -1,6 +1,6 @@
 from mprnn.compare import make_dev_from_baseline
 from mprnn.testing import gather_data_time
-from mprnn.utils import set_plotting_params
+from mprnn.utils import default_argparser, set_plotting_params
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -102,18 +102,11 @@ def plot_violins(totaldf):
     plt.savefig(Path("results","RewardDeviation.pdf"))
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run and Test the Agent's Performance on all \
-                                                    8 opponents relative to a trained and untrained baseline")
+    parser = default_argparser("Run and Test the Agent's Performance on all 8 opponents relative to a trained and untrained baseline")
 
-    parser.add_argument("--trun", type=int, required=False, default=86, help="model run # of the \
-                                                                        trained multi-task agent")
     parser.add_argument("--urun", type=int, required=False, default=6, help="model run # of the \
                                                                      untrained multi-task agent")
-    parser.add_argument("--mtype", required=False, default = "SSP", help="type of model (SSP or notSSP)")
-    
-    parser.add_argument("--trainiters", required=False, default="8000k", help="length of model training to be used (number+k)")
-    parser.add_argument("--nblocks",type=int, required=False, default="50", help="number of trial blocks to test each opponent on")
-
+  
     args = parser.parse_args()
     
     totaldf = get_trained_untrained_dataframes(args)

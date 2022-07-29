@@ -9,7 +9,8 @@ from sklearn.svm import SVC
 from scipy.ndimage import gaussian_filter
 
 from mprnn.testing import test_specific_opponents
-from mprnn.utils import convert_dist_to_params, get_env_from_json, get_net, FILEPATH
+from mprnn.utils import convert_dist_to_params, default_argparser, get_env_from_json, get_net,set_plotting_params, FILEPATH
+set_plotting_params()
 
 def define_decoding_test_opponents():
     '''
@@ -124,19 +125,20 @@ def get_data_classify(args):
     clf = train_classifier(train_test_data['X_train'],train_test_data['y_train'],args.clf,args.penalty)
     return clf, train_test_data
 
+def predict_opponent_class(X,y,clf):
+    pred = clf.predict(X)
+    acc = np.array(pred == y, dtype=np.int)   
+    #right now this is data from block 1-3 concatenated
+    return acc
+
 def block_test(X_train,X_test,y_train,y_test,clf):
     '''
     Given train test data and a classifier, tests the classifier and returns its predictions
     Returns:
         acc_train,acc_test (np.arrays): lists of whether or not the classifier was accurate on individual trials over time
     '''
-    def pred(X,y):
-        pred = clf.predict(X)
-        acc = np.array(pred == y, dtype=np.int)   
-        #right now this is data from block 1-3 concatenated
-        return acc
-    acc_train = pred(X_train,y_train)
-    acc_test = pred(X_test,y_test)
+    acc_train = predict_opponent_class(X_train,y_train,clf)
+    acc_test = predict_opponent_class(X_test,y_test,clf)
     return acc_train, acc_test
 
 def get_clf_accuracy_over_time(train_test_data,clf,nblocks):
@@ -218,23 +220,7 @@ def plot_acc(mu_train,mu_test_within,mu_test_between,stderr_train,stderr_test_wi
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run and Test the Agent's Performance, then \
-                                                trains, tests, and plots the results of a linear classifier")
-
-     
-    parser.add_argument("--trun", type=int, required=False, default=86, help="model run # of the \
-                                                                        trained multi-task agent")
-    parser.add_argument("--mtype", required=False, default = "SSP", help="type of model (SSP or notSSP)")
-    
-    parser.add_argument("--trainiters", required=False, default="8000k", help="length of model training to be used (number+k)")
-    parser.add_argument("--nblocks",type=int, required=False, default="50", help="number of trial blocks to test each opponent on")
-    
-    
-    parser.add_argument("--nwashout",type=int,required=False,default = 30,help="length of washout blocks")
-    parser.add_argument("--clf",required=False,default= "logistic", help = "'logistic','SVC'): logistic regression or support vector classifier")
-    parser.add_argument("--penalty",default="l2",required = False, help = "regularization term for linear classifier")
-    parser.add_argument("--train_split",default=0.7,type=float,help = "percent of prewashout_trials to use as training data")
-
+    parser = default_argparser("Run and Test the Agent's Performance, then trains, tests, and plots the results of a linear classifier")
     args = parser.parse_args()   
 
     clf, train_test_data = get_data_classify(args)

@@ -1,4 +1,5 @@
 import numpy as np
+import argparse
 import pickle
 from pathlib import Path
 import gym
@@ -24,6 +25,32 @@ BETTER_NAMES = {"lrplayer":"Linear Combination","1":"MP 1st",'all':"MP 1st+2nd",
                 'reversalbandit':"anti-correlated",'patternbandit':"Patterns",
             'softmaxqlearn':'Softmax QL','epsilonqlearn':'$\epsilon$-Greedy QL','mimicry':"n-back mimickry"}
 FILEPATH = Path(__file__).parent.parent.absolute()
+
+def default_argparser(details):
+    '''
+    arguments that need to be parsed for each script. Add on other details after
+    Arguments:
+        details (str): description of the argparsers
+    Returns:
+        parser (ArgumentParser): the parser
+    '''
+    parser = argparse.ArgumentParser(description=details)
+
+     
+    parser.add_argument("--trun", type=int, required=False, default=86, help="model run # of the \
+                                                                        trained multi-task agent")
+    parser.add_argument("--mtype", required=False, default = "SSP", help="type of model (SSP or notSSP)")
+    
+    parser.add_argument("--trainiters", required=False, default="8000k", help="length of model training to be used (number+k)")
+    parser.add_argument("--nblocks",type=int, required=False, default=50, help="number of trial blocks to test each opponent on")
+    
+    
+    parser.add_argument("--nwashout",type=int,required=False,default = 30,help="length of washout blocks")
+    #linear classifier arguments (for perturb and lineardecoding)
+    parser.add_argument("--clf",required=False,default= "logistic", help = "'logistic','SVC'): logistic regression or support vector classifier")
+    parser.add_argument("--penalty",default="l2",required = False, help = "regularization term for linear classifier")
+    parser.add_argument("--train_split",default=0.7,type=float,help = "percent of prewashout_trials to use as training data")
+    return parser
 
 def set_plotting_params(fontsize = 15):
     plt.rcParams['font.size'] = fontsize

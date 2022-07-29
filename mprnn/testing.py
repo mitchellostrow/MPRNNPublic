@@ -82,27 +82,28 @@ def make_perturbation(recurrent_state,perturb):
     '''
     s = recurrent_state.shape[1]//2
     if perturb['reset']:
-        #to make a basis, will need to do QR decomposition, but then moving them to the
+        #to make a basis, can do QR decomposition, but then moving them to the
         #right spot on the coefficients 
         #Q,R = np.linalg.qr(perturb['coefs'].T) #Q is the orthonormal basis
-
+        decoding_coefs = perturb['decoding_coefs']
         #define projection matrix as 
-        c = [np.dot(perturb['coefs'][i],recurrent_state[0,:s]) for i in range(perturb['coefs'].shape[0])]
+        c = [np.dot(decoding_coefs[i],recurrent_state[0,:s]) for i in range(decoding_coefs.shape[0])]
         #perturb['coefs'] @ recurrent_state[0,:s].T  #3x128 * 128 x 1
         #only the first half is the relevant part, this is now 3 x 1, the coefficients of the state on the basis
+        print("original state is", c)
         for _ in range(40):
-            p = -sum([c[i] * perturb['coefs'][i] for i in range(perturb['coefs'].shape[0])])
+            p = -sum([c[i] * decoding_coefs[i] for i in range(decoding_coefs.shape[0])])
             #1x3 * 3x128, reduced rank version in full sapce
             #I don't want to have to loop this but it doesn't work well otherwise--the accuracy doesn't have to be perfect
             #subtract the different axes of the vector of the current state in this subspace
             recurrent_state[0,:s] += p
-            c = [np.dot(perturb['coefs'][i],recurrent_state[0,:s]) for i in range(perturb['coefs'].shape[0])]
-            print(c, "should be 0,0,0")
-            if np.sum(c) <= 0.0001:
+            c = [np.dot(decoding_coefs[i],recurrent_state[0,:s]) for i in range(decoding_coefs.shape[0])]
+            #print(c, "should be 0,0,0")
+            if np.sum(np.square(c)) <= 0.01:
                 break
         recurrent_state[0,:s] += perturb['vector']
-        c = np.array([np.dot(perturb['coefs'][i],recurrent_state[0,:s]) for i in range(perturb['coefs'].shape[0])])
-        print("new state is ", c, "should be", perturb['params'])
+        c = np.array([np.dot(decoding_coefs[i],recurrent_state[0,:s]) for i in range(decoding_coefs.shape[0])])
+        print("new state is ", c, "should be", perturb['new_coefs_to_perturb_to'])
     else:
         recurrent_state[0,:s] += perturb['vector']
     return recurrent_state
@@ -134,7 +135,7 @@ def iter_step_and_save(env,model,perturb = None,**startdata):
 
         action,pred,obs,reward,dones,recurrent_state = data
 
-        if perturb and perturb['time'] == _: 
+        if perturb and perturb['time_of_perturbation'] == _: 
             #add perturbation at correct time and opponent
             recurrent_state = make_perturbation(recurrent_state,perturb)
             
@@ -317,8 +318,8 @@ def test_specific_opponents(env, model, opponents,nwashout = 30,perturb=None):
     opponents is a list of tuples of (string,dict) detailing opponent name and params
     Returns the testing data from the first set of opponents and the last, after the washout set
     perturb (dict): details when, and how to perturb the state 
-            parameters: 'time': int-- which step in the block to make the perturbation
-                        'opp': int-- which opponent to perturb (0,1,2)
+            parameters: 'time_of_perturbation': int-- which step in the block to make the perturbation
+                        'opponent_index_to_perturb_from': int-- which opponent to perturb (0,1,2)
                         'vector': np.array -- the perturbation vector (adds to the state)
                         'reset': bool --  True if we want to reset activity on this axis to the provided value, false if we just want to add it
     '''
@@ -347,17 +348,19 @@ def test_specific_opponents(env, model, opponents,nwashout = 30,perturb=None):
     #first set of testing run
     random.shuffle(opponents)
     if perturb: #if it's not None or not False
-        i = opponents.index(ops[perturb['perturb_from']])
-        op = opponents[perturb['opp']]
-        opponents[perturb['opp']] = opponents[i]
+        #this ensures that the index in perturb_dict.json actually means the same thing each run
+        #and isn't swapped around from the random shuffling above
+        i = opponents.index(ops[perturb['opponent_index_to_perturb_from']]) #where is the to-be-perturbed opponent in the list of opponents
+        op = opponents[perturb['opponent_index_to_perturb_from']] #save the opponent that's in that position already
+        opponents[perturb['opponent_index_to_perturb_from']] = opponents[i] #swap the two
         opponents[i] = op
 
     def test_opponents(opponents):
         trialobjects = []
-        for i, opp in enumerate(opponents):
+        for i, _ in enumerate(opponents):
             env.envs[0].clear_data()
             env.envs[0].draw_opponent(i) #reset opponent and environment data
-            if perturb and perturb['opp'] == i:
+            if perturb and perturb['opponent_index_to_perturb_from'] == i: 
                 trialdata = iter_step_and_save(env,model,perturb,**startdata)
             else:
                 trialdata = iter_step_and_save(env,model,None,**startdata)
