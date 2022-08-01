@@ -37,9 +37,9 @@ def default_argparser(details):
     parser = argparse.ArgumentParser(description=details)
 
      
-    parser.add_argument("--trun", type=int, required=False, default=86, help="model run # of the \
+    parser.add_argument("--runindex", type=int, required=False, default=86, help="model run # of the \
                                                                         trained multi-task agent")
-    parser.add_argument("--mtype", required=False, default = "SSP", help="type of model (SSP or notSSP)")
+    parser.add_argument("--modeltype", required=False, default = "SSP", help="type of model (SSP or notSSP)")
     
     parser.add_argument("--trainiters", required=False, default="8000k", help="length of model training to be used (number+k)")
     parser.add_argument("--nblocks",type=int, required=False, default=50, help="number of trial blocks to test each opponent on")
@@ -259,9 +259,14 @@ def get_env_and_test_opps(runindex):
         script_kwargs = json.load(f)
     train_params = convert_dist_to_params(script_kwargs)
     test_opponents = []
+    #other_opponents = [[]]
     for k,v in train_params['env']['opponents_params'].items(): #add train opponents first
-        if k in {'lrplayer','1','patternbandit'}:
-            test_opponents.append( (k,v) )
+        #if k in {'lrplayer','1','patternbandit'}:
+         #   test_opponents.append( (k,v) )
+        #else:
+         #   other_opponents.append( (k,v) )
+        test_opponents.append((k,v))
+    #test_opponents.extend(other_opponents)
     env = get_env_from_json(train_params['env'],useparams=False)
     return env,test_opponents
 

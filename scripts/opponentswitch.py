@@ -7,7 +7,7 @@ from scipy.ndimage import gaussian_filter
 from copy import deepcopy
 
 from mprnn.testing import test_specific_opponents
-from mprnn.utils import get_net, set_plotting_params, get_env_and_test_opps,iterate_over_opponents,convert_names_short
+from mprnn.utils import default_argparser, get_net, set_plotting_params, get_env_and_test_opps,iterate_over_opponents,convert_names_short
 
 set_plotting_params()
 
@@ -112,23 +112,23 @@ def test_opponents_switch(args,opponent_pairs):
     Given input arguments to the script and the parsed opponent paris, test the opponents and save data, then analyze and plot
     Arguments:
         args (ArgParse): arguments from script:
-            trun: model run index of the trained agent
-            mtype: whether the model is SSP or default A2C
+            runindex: model run index of the trained agent
+            modeltype: whether the model is SSP or default A2C
             trainiters: how long the model has traned for
-            nwashout, ntests: how long the model should be tested + washed out for
+            nwashout, nblocks: how long the model should be tested + washed out for
         opponent_pairs (list(list(str))): list of opponent pairs to be tested on switching
     Returns:
         None
     '''
-    model,_ = get_net(args.trun,args.mtype,args.trainiters) 
-    env,test_opponents = get_env_and_test_opps(args.trun)
+    model,_ = get_net(args.runindex,args.modeltype,args.trainiters) 
+    env,test_opponents = get_env_and_test_opps(args.runindex)
     opponents = get_all_opponent_params(opponent_pairs,test_opponents)
 
     prewashout_trials, postwashout_trials = [],[] #will save this data separately then concatenate
     for i in range(len(opponent_pairs)): #compare opponent pairs separately
         o = deepcopy(opponents[i]) #there was an overwriting bug here, deepcopy solves it
         prewashout_blocks, postwashout_blocks = [], []
-        for j in range(args.ntests): #
+        for j in range(args.nblocks): #
             l,j = np.random.choice(len(o),size=(2)) #select two random opponents (to switch between)
             prewashout, postwashout = test_specific_opponents(env, model, [o[l],o[j]],nwashout = args.nwashout)
             #prewashout and postwashout are both lists of TrialTestObjects
@@ -142,17 +142,11 @@ def test_opponents_switch(args,opponent_pairs):
     plot_switching_behavior(opponent_pairs, avg_switches,uppers,lowers)
 
 if __name__ == "__main__":
+    parser = default_argparser("Run and Test the Agent's Performance on how it switches from one opponent to another")
     parser = argparse.ArgumentParser(description="Run and Test the Agent's Performance on how it switches from one opponent to another")
-
-    parser.add_argument("--trun", type=int, required=False, default=86, help="model run # of the \
-                                                                        trained multi-task agent")
-    parser.add_argument("--mtype", required=False, default = "SSP", help="type of model (SSP or notSSP)")
-    
-    parser.add_argument("--trainiters", required=False, default="8000k", help="length of model training to be used (number+k)")
+   
     parser.add_argument("--opponents", type=str, required=False, nargs = "+", default=["epsilonqlearn","patternbandit","1","softmaxqlearn"], 
                         help="pairs of opponents")
-    parser.add_argument("--ntests", required = False, default = 50, type = int, help = "how many blocks to test opponent switch behavior") 
-    parser.add_argument("--nwashout",type=int, required = False, default = 10, help = "number of washout blocks for testing")                
 
     args = parser.parse_args()
     opponent_pairs = [[args.opponents[i],args.opponents[i+1]] for i in range(0,len(args.opponents),2)] #split up opponents into ordered pairs

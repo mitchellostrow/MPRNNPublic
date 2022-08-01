@@ -15,15 +15,15 @@ def test_WSLS(args):
     saves data, then analyze and plot
     Arguments:
         args (ArgParse): arguments from script:
-            trun: model run index of the trained agent
-            mtype: whether the model is SSP or default A2C
+            runindex: model run index of the trained agent
+            modeltype: whether the model is SSP or default A2C
             trainiters: how long the model has traned for
             ntests: how long the model should be tested for
     Returns:
         None
     '''
-    model,_ = get_net(args.trun,args.mtype,args.trainiters) 
-    env,_ = get_env_and_test_opps(args.trun)
+    model,_ = get_net(args.runindex,args.modeltype,args.trainiters) 
+    env,_ = get_env_and_test_opps(args.runindex)
 
     b2s = np.arange(-5,5,0.5)
     stayprob = np.zeros((args.ntests*2,len(b2s)))
@@ -76,9 +76,9 @@ def test_WSLS(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run and Test the Agent's Performance on how it switches from one opponent to another")
 
-    parser.add_argument("--trun", type=int, required=False, default=86, help="model run # of the \
+    parser.add_argument("--runindex", type=int, required=False, default=86, help="model run # of the \
                                                                         trained multi-task agent")
-    parser.add_argument("--mtype", required=False, default = "SSP", help="type of model (SSP or notSSP)")
+    parser.add_argument("--modeltype", required=False, default = "SSP", help="type of model (SSP or notSSP)")
     
     parser.add_argument("--trainiters", required=False, default="8000k", help="length of model training to be used (number+k)")
 

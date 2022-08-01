@@ -99,9 +99,9 @@ def get_data_classify(args):
     Then train a classifier and return it
     Arguments:
         args (args.argParse object):
-            trun (int): code for the model run 
+            runindex (int): code for the model run 
             trainiters (str): length of training for the particular model
-            mtype (str): type of model (SSP or default)
+            modeltype (str): type of model (SSP or default)
             nwashout (int): how many blocks to use as the washout between blocks
             nblocks (int): how many blocks to test the agent
             clf ("logistic","SVC"): logistic regression or support vector classifier
@@ -111,8 +111,8 @@ def get_data_classify(args):
         train_test_data (dict): all training and testing data stored in a dict
         clf (SVC or LogisticRegression): a trained classifier
     '''
-    model,_ = get_net(args.trun,args.mtype,args.trainiters)  
-    with open(Path(FILEPATH,"data","models",f"run{args.trun}",Path("train_params.json") ) ) as f:
+    model,_ = get_net(args.runindex,args.modeltype,args.trainiters)  
+    with open(Path(FILEPATH,"data","models",f"run{args.runindex}",Path("train_params.json") ) ) as f:
         script_kwargs = json.load(f)
     train_params = convert_dist_to_params(script_kwargs)
     env = get_env_from_json(train_params['env'],useparams=True) 

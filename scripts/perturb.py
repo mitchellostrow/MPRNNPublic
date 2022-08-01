@@ -197,8 +197,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()   
     #get the run parameters
-    model,_ = get_net(args.trun,args.mtype,args.trainiters)  
-    with open(Path(FILEPATH,"data","models",f"run{args.trun}",Path("train_params.json") ) ) as f:
+    model,_ = get_net(args.runindex,args.modeltype,args.trainiters)  
+    with open(Path(FILEPATH,"data","models",f"run{args.runindex}",Path("train_params.json") ) ) as f:
         script_kwargs = json.load(f)
     train_params = convert_dist_to_params(script_kwargs)
     env = get_env_from_json(train_params['env'],useparams=True) 

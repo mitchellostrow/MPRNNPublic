@@ -64,8 +64,8 @@ def get_trained_untrained_dataframes(args):
     Outputs:
         totaldf (pd.DataFrame): dataframe combining deviations and labels for opponent and baseline type for all opponents and baselines.
     '''
-    blockdata_within,blockdata_ood = gather_data_time(args.trun,args.mtype,args.trainiters,args.nblocks)
-    blockdata_within_untrained,blockdata_ood_untrained = gather_data_time(args.urun,args.mtype,"0k",args.nblocks)
+    blockdata_within,blockdata_ood = gather_data_time(args.runindex,args.modeltype,args.trainiters,args.nblocks)
+    blockdata_within_untrained,blockdata_ood_untrained = gather_data_time(args.untrainedindex,args.modeltype,"0k",args.nblocks)
 
     total_trained = get_within_ood_deviations(blockdata_within,blockdata_ood)
     total_untrained = get_within_ood_deviations(blockdata_within,blockdata_ood,baseline_within=blockdata_within_untrained,
@@ -104,7 +104,7 @@ def plot_violins(totaldf):
 if __name__ == "__main__":
     parser = default_argparser("Run and Test the Agent's Performance on all 8 opponents relative to a trained and untrained baseline")
 
-    parser.add_argument("--urun", type=int, required=False, default=6, help="model run # of the \
+    parser.add_argument("--untrainedindex", type=int, required=False, default=6, help="model run # of the \
                                                                      untrained multi-task agent")
   
     args = parser.parse_args()
