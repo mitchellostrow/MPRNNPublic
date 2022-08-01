@@ -259,14 +259,8 @@ def get_env_and_test_opps(runindex):
         script_kwargs = json.load(f)
     train_params = convert_dist_to_params(script_kwargs)
     test_opponents = []
-    #other_opponents = [[]]
     for k,v in train_params['env']['opponents_params'].items(): #add train opponents first
-        #if k in {'lrplayer','1','patternbandit'}:
-         #   test_opponents.append( (k,v) )
-        #else:
-         #   other_opponents.append( (k,v) )
         test_opponents.append((k,v))
-    #test_opponents.extend(other_opponents)
     env = get_env_from_json(train_params['env'],useparams=False)
     return env,test_opponents
 
