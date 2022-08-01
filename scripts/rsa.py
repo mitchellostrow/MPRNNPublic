@@ -6,7 +6,7 @@ from sklearn.manifold import TSNE
 import scipy.cluster.hierarchy as sch
 
 from mprnn.utils import default_argparser, FILEPATH, BETTER_NAMES
-from mprnn.opponent_representation import save_repvecs_across_opponents
+from mprnn.representation import save_repvecs_across_opponents
 
 def compare_populations(pop1,pop2,simfunc):
     '''
