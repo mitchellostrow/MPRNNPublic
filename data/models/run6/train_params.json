@@ -1,0 +1,167 @@
+{
+    "seed": 1549,
+    "iter": 0,
+    "train_steps": 0,
+    "net_params": {
+        "net_type": "lstm",
+        "SSP": false,
+        "nrec": 128,
+        "act_fun": "relu",
+        "net_arch": [
+            32,
+            "lstm"
+        ],
+        "net_args": {
+            "pred_coef": 0.9500000000000001,
+            "ent_coef": 0.2,
+            "learning_rate": 0.0007,
+            "vf_coef": 0.1,
+            "momentum": 0.0,
+            "n_steps": 300,
+            "gamma": 0.9,
+            "seed": 196
+        }
+    },
+    "env": {
+        "train_opponents": [
+            "lrplayer",
+            "1",
+            "patternbandit"
+        ],
+        "all_opponents": [
+            "lrplayer",
+            "1",
+            "all",
+            "reversalbandit",
+            "patternbandit",
+            "epsilonqlearn",
+            "softmaxqlearn",
+            "mimicry"
+        ],
+        "show_opp": "false",
+        "reset_time": 150,
+        "opponents_params": {
+            "lrplayer": {
+                "b": {
+                    "start": 0.0,
+                    "stop": 0.1,
+                    "step": 0.1
+                },
+                "len_choice": {
+                    "start": 0,
+                    "stop": 3,
+                    "step": 1
+                },
+                "choice_betas": {
+                    "start": -1,
+                    "stop": 2,
+                    "step": 1.0
+                },
+                "len_outcome": {
+                    "start": 0,
+                    "stop": 3,
+                    "step": 1
+                },
+                "outcome_betas": {
+                    "start": -1,
+                    "stop": 2,
+                    "step": 1
+                }
+            },
+            "1": {
+                "bias": {
+                    "start": 0,
+                    "stop": 0.1,
+                    "step": 0.1
+                },
+                "depth": {
+                    "start": 3,
+                    "stop": 8,
+                    "step": 2
+                }
+            },
+            "all": {
+                "bias": {
+                    "start": 0,
+                    "stop": 0.1,
+                    "step": 0.1
+                },
+                "depth": {
+                    "start": 4,
+                    "stop": 8,
+                    "step": 2
+                }
+            },
+            "reversalbandit": {
+                "pr": {
+                    "start": 0.2,
+                    "stop": 0.8,
+                    "step": 0.1
+                },
+                "update": {
+                    "start": 40,
+                    "stop": 140,
+                    "step": 20
+                }
+            },
+            "patternbandit": {
+                "length": {
+                    "start": 3,
+                    "stop": 7,
+                    "step": 1
+                }
+            },
+            "epsilonqlearn": {
+                "lr": {
+                    "start": 0.5,
+                    "stop": 1.0,
+                    "step": 0.25
+                },
+                "bias": {
+                    "start": -0.05,
+                    "stop": 0.05,
+                    "step": 0.02
+                },
+                "gamma": {
+                    "start": 0.5,
+                    "stop": 0.99,
+                    "step": 0.07
+                },
+                "epsilon": {
+                    "start": 0.0,
+                    "stop": 0.3,
+                    "step": 0.02
+                }
+            },
+            "softmaxqlearn": {
+                "lr": {
+                    "start": 0.5,
+                    "stop": 1.0,
+                    "step": 0.25
+                },
+                "bias": {
+                    "start": -0.05,
+                    "stop": 0.05,
+                    "step": 0.02
+                },
+                "gamma": {
+                    "start": 0.5,
+                    "stop": 0.99,
+                    "step": 0.07
+                },
+                "temp": {
+                    "start": 0.25,
+                    "stop": 1.5,
+                    "step": 0.25
+                }
+            },
+            "mimicry": {
+                "n": {
+                    "start": 1,
+                    "stop": 5,
+                    "step": 1
+                }
+            }
+        }
+    }
+}

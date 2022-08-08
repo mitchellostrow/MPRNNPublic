@@ -36,7 +36,6 @@ def default_argparser(details):
     '''
     parser = argparse.ArgumentParser(description=details)
 
-     
     parser.add_argument("--runindex", type=int, required=False, default=86, help="model run # of the \
                                                                         trained multi-task agent")
     parser.add_argument("--modeltype", required=False, default = "SSP", help="type of model (SSP or notSSP)")
