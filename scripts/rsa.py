@@ -1,12 +1,13 @@
+from pathlib import Path
+
 import numpy as np
 import matplotlib.pyplot as plt
-from pathlib import Path
 from scipy import stats,spatial
 from sklearn.manifold import TSNE
 import scipy.cluster.hierarchy as sch
 
 from mprnn.utils import default_argparser, FILEPATH, BETTER_NAMES
-from mprnn.representation import save_repvecs_across_opponents
+from mprnn.representation import save_repvecs_across_opponents,save_reps_to_pkl, load_reps
 
 def compare_populations(pop1,pop2,simfunc):
     '''
@@ -39,7 +40,6 @@ def compare_reps(representations,opponent_order,simfunc="pearsonr"):
     for i in range(num_opps):
         for j in range(num_opps):
             similarities[i,j] = compare_populations(representations[i],representations[j],simfunc)
-
     return similarities
 
 def get_avg_similarites(similarities,opponent_order):
@@ -60,7 +60,7 @@ def get_avg_similarites(similarities,opponent_order):
     for i,o1 in enumerate(unique_opponents):
         for j,o2 in enumerate(unique_opponents):
             avg_similarities[i,j] = get_mean(o1,o2,similarities)
-
+    print("got avg")
     return avg_similarities,unique_opponents
 
 def plot_state_vector_lowd(state_reps,opponent_order):
@@ -73,6 +73,7 @@ def plot_state_vector_lowd(state_reps,opponent_order):
     state_reps = [s.mean(axis=0) for s in state_reps] #average over the populations
     all_states_avged_overseq = np.array([s.mean(axis=0) for s in state_reps]) #average over the sequence too
     #now we just have a single 128 dimensional vector for the average state, the center of the representation
+    print('reducing dim')
     reduced = tsne.fit_transform(all_states_avged_overseq)
     for j in range(2):
         _, ax = plt.subplots(1,1,figsize=(10,10))
@@ -152,17 +153,24 @@ def plot_rsa(similarities,opponent_order,name,sorted=False):
 
 if __name__ == "__main__":
     parser = default_argparser("get and plot representational similarity analysis")
-    parser.add_argument('--seqlength',default=3, required = False,type=int, help = "number of time steps for the fixed sequence")
-    parser.add_argument("--npop",default=1,required=False,type=int,help = "number of times to get the representation vecotrs")
     parser.add_argument("--sorted",default=False,required=False,type=bool,help="whether or not to sort the RSA plot")
+
     args = parser.parse_args()   
+    if args.savedrepspath is not None:
+        policy_reps,state_reps,opponent_order= load_reps(args.savedrepspath)
+    else:
+        policy_reps,state_reps,opponent_order = save_repvecs_across_opponents(args)
+        print(state_reps.shape)
+        save_reps_to_pkl(policy_reps,state_reps,opponent_order,args)
 
-    policy_reps,state_reps,opponent_order = save_repvecs_across_opponents(args)
-    policy_similarities = compare_reps(policy_reps,opponent_order)
-    state_similarities = compare_reps(state_reps,opponent_order)
-    avg_state_similarities,unique_opponents = get_avg_similarites(state_similarities,opponent_order)
-    avg_policy_similarities,_ = get_avg_similarites(policy_similarities,opponent_order)
+    opponent_names = np.array([opp[0] for opp in opponent_order])
+    policy_similarities = compare_reps(policy_reps,opponent_names)
+    state_similarities = compare_reps(state_reps,opponent_names)
+    avg_state_similarities,unique_opponents = get_avg_similarites(state_similarities,opponent_names)
+    avg_policy_similarities,_ = get_avg_similarites(policy_similarities,opponent_names)
 
-    plot_state_vector_lowd(state_reps,opponent_order)
+    print(avg_state_similarities.shape,len(unique_opponents))
+
+    plot_state_vector_lowd(state_reps,opponent_names)
     plot_rsa(avg_state_similarities,unique_opponents,"state_across_opponents",sorted=args.sorted)
     plot_rsa(avg_policy_similarities,unique_opponents,"policy_across_opponents",sorted=args.sorted)

@@ -42,14 +42,27 @@ def default_argparser(details):
     parser.add_argument("--modeltype", required=False, default = "SSP", help="type of model (SSP or notSSP)")
     
     parser.add_argument("--trainiters", required=False, default="8000k", help="length of model training to be used (number+k)")
-    parser.add_argument("--nblocks",type=int, required=False, default=50, help="number of trial blocks to test each opponent on")
-    
+    parser.add_argument("--nblocks",type=int, required=False, default=30, help="number of trial blocks to test each opponent on")
     
     parser.add_argument("--nwashout",type=int,required=False,default = 30,help="length of washout blocks")
     #linear classifier arguments (for perturb and lineardecoding)
     parser.add_argument("--clf",required=False,default= "logistic", help = "'logistic','SVC'): logistic regression or support vector classifier")
     parser.add_argument("--penalty",default="l2",required = False, help = "regularization term for linear classifier")
     parser.add_argument("--train_split",default=0.7,type=float,help = "percent of prewashout_trials to use as training data")
+
+    #for rsa
+    parser.add_argument("--npop",default=1,type=int,required=False,help="For RSA, how many populations to generate to compare between")
+
+    #for repscomparison object
+    parser.add_argument("--cutoffscore",default=0.8,type=float,required=False,help="LC map accuracy minimum for inclusion")
+    parser.add_argument("--cutoffdist",default=1.0,type=float,required=False,help="distance between WD or LC map minimum")
+    parser.add_argument("--usecenterdists",default=True,type=bool,help="use the center of the sequences or not for represenations")
+    parser.add_argument("--savedrepscomparisonpath",required=False,default=None,help="name of the repscomparison data object saved in the results folder")
+    parser.add_argument("--savedrepspath",default = None,required=False,help="name of the saved reps data data saved in the results folder")
+
+    parser.add_argument("--npcs",default=10,type=int,required=False,help="number of pc's to identify")
+    parser.add_argument('--seqlength',default=3, required = False,type=int, help = "number of time steps for the fixed sequence")
+
     return parser
 
 def set_plotting_params(fontsize = 15):

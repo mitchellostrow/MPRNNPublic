@@ -1,7 +1,10 @@
 import itertools
+import os
+from pathlib import Path
+import pickle as pkl
 import numpy as np
 from mprnn.sspagent.a2c_custom import CustomA2C
-from mprnn.utils import setup_run, get_env_and_test_opps,get_net,iterate_over_opponents
+from mprnn.utils import setup_run, get_env_and_test_opps,get_net,iterate_over_opponents, FILEPATH
 
 def feed_seq(model,seq,_states,dones):
     '''
@@ -67,19 +70,19 @@ def feed_seq_and_save_state(env,model,opponent,seq,nblocks=1):
         avg_pi += 1/nblocks * pi
     return avg_pi, avg_state
 
-def get_repvecs(env,model,opponent,args):
+def get_repvecs(env,model,opponent,nblocks,seqlength):
     '''
     Given a particular length of sequences, runs the feed_seq_and_save_state function for each sequence
     and saves the output policy and state into a list for each sequence
     Returns:
         policy_rep, state_rep (np.arrays): outputs of the representation for each sequence
     '''
-    seqs = ["".join(seq) for seq in itertools.product("01", repeat=args.seqlength)]
+    seqs = ["".join(seq) for seq in itertools.product("01", repeat=seqlength*2)]
     #this gives all the different input state sequences of length 5
     policy_rep = np.zeros(len(seqs))
     state_rep = np.zeros((len(seqs),model.initial_state.shape[-1])) #TBD: use the whole state or just cell/hidden?
     for i,seq in enumerate(seqs):
-        avg_pi,avg_state = feed_seq_and_save_state(env,model,opponent,seq,nblocks=args.nblocks)
+        avg_pi,avg_state = feed_seq_and_save_state(env,model,opponent,seq,nblocks=nblocks)
         policy_rep[i] = avg_pi
         state_rep[i] = avg_state
 
@@ -105,22 +108,37 @@ def save_repvecs_across_opponents(args):
     opponent_order = [] #save the order in which we see opponents
     #that can then be used to map to the other policy_reps and state_reps
     #using this instead of a dictionary because we can use matrix operations on a numpy array 
-    policy_reps = []
-    state_reps = []
-    args.seqlength *= 2 #for the length of the state being dependent on both action and reward
-    for opp in iterate_over_opponents(test_opponents):
+    numopps = 0
+    for _ in iterate_over_opponents(test_opponents):
+        numopps += 1 #count the number of opponents
+    seqlength = 2*args.seqlength
+    policy_reps = np.zeros((numopps,args.npop,2**seqlength))
+    state_reps = np.zeros((numopps,args.npop,2**seqlength,model.initial_state.shape[-1]))
+    for i,opp in enumerate(iterate_over_opponents(test_opponents)):
         print("testing opponent ",opp)
-        policy_rep = np.zeros((args.npop,2**args.seqlength))
-        state_rep = np.zeros((args.npop,2**args.seqlength,model.initial_state.shape[-1]))
-        for i in range(args.npop):
-            p,s = get_repvecs(env,model,opp,args)
-            policy_rep[i] = p #2**seqlength x 1
-            state_rep[i] = s #seqlength x 128
-
-        opponent_order.append(opp[0])
-        policy_reps.append(policy_rep)
-        state_reps.append(state_rep)
-    policy_reps = np.array(policy_reps)
-    state_reps = np.array(state_reps)
+        for j in range(args.npop):
+            p,s = get_repvecs(env,model,opp,args.nblocks,args.seqlength) 
+            policy_reps[i,j] = p.squeeze()#2**seqlength x 1
+            state_reps[i,j] = s.squeeze()#2**seqlength x 128
+        opponent_order.append(opp)
     opponent_order = np.array(opponent_order)
+    return policy_reps.squeeze(),state_reps.squeeze(),opponent_order
+
+def save_reps_to_pkl(policy_reps,state_reps,opponent_order,args):
+    try:
+        os.mkdir(Path(FILEPATH,"data","RSAtrials"))
+    except FileExistsError:
+        pass
+    with open(Path(FILEPATH,"data","RSAtrials",f'model{args.runindex}{args.modeltype}{args.trainiters}_npop{args.npop}.pkl'), 'wb') as f: 
+        pkl.dump([policy_reps,state_reps,opponent_order], f) 
+
+def load_reps(name):
+    '''
+    name is the dataset pickle name str that we're reading from
+    '''
+    with open(Path(FILEPATH,"data","RSAtrials",f"{name}.pkl"), "rb") as input_file: 
+        representation = pkl.load(input_file) 
+    print("loaded representations")
+    policy_reps,state_reps,opponent_order = representation
+    state_reps = np.array([i.squeeze() for i in state_reps])
     return policy_reps,state_reps,opponent_order
