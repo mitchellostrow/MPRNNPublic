@@ -30,7 +30,6 @@ def get_repvecs_for_density(model,reps,opponent_inds,args):
                 state_rep = get_states_opps(reps,opponent_inds,32) #32 individual trajectories instead, more data but maybe more representatitve
             state_reps.append(state_rep)
     state_reps = np.vstack(state_reps)
-    print(state_reps.shape)
     return state_reps
 
 def get_states_dict(model,reps,args):
@@ -71,7 +70,7 @@ def estimate_density(reduced_dict,args):
         binarea (float): the area of each cell in the grid
     '''
     #define the bins over the entire dataset
-    allr = np.concatenate(reduced_dict.values())
+    allr = np.concatenate(list(reduced_dict.values()))
     x,y = allr[:,args.xpc],allr[:,args.ypc]
     xi, yi = np.mgrid[x.min():x.max():args.nbins*1j, y.min():y.max():args.nbins*1j]
     binarea = (x.max()-x.min())*(y.max()-y.min())/(args.nbins**2)
@@ -114,7 +113,7 @@ def plot_relative_densities(density_dict,binarea):
         density_dict (dict): keys are the different type of opponents, values are np.arrays of density on an xy grid
         binarea (float): relative area of the bins on that xy grid
     '''
-    ds = np.arange(0.00001,max(np.concatenate(density_dict.values()))+0.01,0.00001)
+    ds = np.arange(0.00001,max(np.concatenate(list(density_dict.values())))+0.01,0.00001)
     plt.figure(figsize=(7,4))
     wd_density = density_dict['within-dist']
     for name,density in density_dict.items():
@@ -143,7 +142,7 @@ if __name__ == "__main__":
     parser.add_argument("--nbins",default=100,type=int,required=False,help="number of bins for each dimension of density")
     parser.add_argument("--xpc",default=0,required=False,type=int,help="PC index for the x axis of density plot")
     parser.add_argument("--ypc",default=1,required=False,type=int,help = "PC index for the y axis of density plot")
-    parser.add_argument("userepvecsfordensity",default=True,required = False,type=bool,
+    parser.add_argument("--userepvecsfordensity",default=True,required = False,type=bool,
                             help="whether to use the fixed-sequence reps (True) or real trajectories (False) for density estimation")
     #here, use loadrepscomparison path if we've already calculated these in scatter_distances.py
     #it is very time intensive as it has to be exhaustive so only run that once
