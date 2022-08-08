@@ -1,0 +1,7 @@
+{
+    "opponents": ["lrplayer","1","patternbandit"],
+    "parameters": [{"choice_betas":[0,2],"outcome_betas":[],"b":0.1},
+                    {"bias":0.0,"depth":4},
+                    {"pattern":"1011"}]
+    }
+    
