@@ -1,4 +1,4 @@
-from mprnn import utils,training,testing,baselines,compare, mp_env
+from mprnn import utils,testing,baselines,compare, mp_env
 from mprnn.sspagent import a2c_custom, advanced_rnn
 from gym.envs.registration import register
 

@@ -27,7 +27,7 @@ def get_repvecs_for_density(model,reps,opponent_inds,args):
             if args.userepvecsfordensity:
                 _,state_rep = get_repvecs(env,model,opp,1,args.seqlength) #only 1 run, we don't want to average
             else:
-                state_rep = get_states_opps(reps,opponent_inds,32) #32 individual trajectories instead, more data but maybe more representatitve
+                state_rep = get_states_opps(reps,opponent_inds,64) #32 individual trajectories instead, more data but maybe more representatitve
             state_reps.append(state_rep)
     state_reps = np.vstack(state_reps)
     return state_reps
@@ -142,13 +142,13 @@ if __name__ == "__main__":
     parser.add_argument("--nbins",default=100,type=int,required=False,help="number of bins for each dimension of density")
     parser.add_argument("--xpc",default=0,required=False,type=int,help="PC index for the x axis of density plot")
     parser.add_argument("--ypc",default=1,required=False,type=int,help = "PC index for the y axis of density plot")
-    parser.add_argument("--userepvecsfordensity",default=True,required = False,type=bool,
-                            help="whether to use the fixed-sequence reps (True) or real trajectories (False) for density estimation")
+    parser.add_argument('--userepvecsfordensity', action='store_true',help="use the fixed-sequence reps for density estimatino")
+    parser.add_argument('--usestatesfordensity', dest='feature', action='store_false',help="use real trajectories for density estimation")
+
     #here, use loadrepscomparison path if we've already calculated these in scatter_distances.py
     #it is very time intensive as it has to be exhaustive so only run that once
     args = parser.parse_args()
     reps = load_repscomparison(args)
- 
     states_dict = get_states_dict(reps.model,reps,args)
     reduced_dict = reduce_all_opponents(states_dict,args)
 
