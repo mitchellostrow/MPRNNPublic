@@ -23,11 +23,11 @@ def get_repvecs_for_density(model,reps,opponent_inds,args):
         for i,opp in enumerate(reps.opponent_order):
             if i not in opponent_inds:
                 continue      
-            print("opponent index", i)
             if args.userepvecsfordensity:
+                print("opponent index", i)
                 _,state_rep = get_repvecs(env,model,opp,1,args.seqlength) #only 1 run, we don't want to average
             else:
-                state_rep = get_states_opps(reps,opponent_inds,64) #32 individual trajectories instead, more data but maybe more representatitve
+                state_rep = get_states_opps(reps,[i],16) #32 individual trajectories instead, more data but maybe more representatitve
             state_reps.append(state_rep)
     state_reps = np.vstack(state_reps)
     return state_reps
