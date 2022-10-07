@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 import json
-from mprnn.utils import convert_dist_to_params, train_env_json, nn_json, train_net, FILEPATH
+from mprnn.utils import convert_dist_to_params, get_env_from_json, get_env_from_json, nn_json, FILEPATH
 import numpy as np
 
 rng = np.random.default_rng()
@@ -28,21 +28,21 @@ if __name__ == "__main__":
         script_kwargs = json.load(f)
     it = 0
     try:
-        os.mkdir(f"run{it}")
+        os.mkdir(Path(FILEPATH, "data","models",f"run{it}"))
     except FileExistsError:
         #make folder for the model
         while True:
             try:
-                os.mkdir(f"run{it}")
+                os.mkdir(Path(FILEPATH, "data","models",f"run{it}"))
                 break
             except FileExistsError:
                 it += 1
                 continue
-    os.chdir(f"run{it}")    
+    os.chdir(Path(FILEPATH, "data","models",f"run{it}"))    
     with open(f'train_params.json', 'w', encoding='utf-8') as f:
         #save this instance of the training parameters so we can refer back
         json.dump(script_kwargs, f, ensure_ascii=False, indent=4)
-    rng.seed(script_kwargs['seed'])
+    rng = np.random.default_rng(script_kwargs['seed'])
 
     train_params = convert_dist_to_params(script_kwargs)
     
@@ -50,7 +50,7 @@ if __name__ == "__main__":
         os.mkdir(name)
         train_params['net_params']["SSP"] = name == "SSP"
     
-        env = train_env_json(train_params['env'],useparams=True)    
+        env = get_env_from_json(train_params['env'],useparams=True)    
         model = nn_json(env,train_params)
         trainiters = [0,*[1000]*8]
         totaliters = 0

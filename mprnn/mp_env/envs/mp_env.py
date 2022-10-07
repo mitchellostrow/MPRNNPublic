@@ -8,7 +8,6 @@ from .misc_opponents import SoftmaxQlearn,EpsilonQlearn,ReversalBandit,PatternBa
 rng = np.random.default_rng()
 
 class MPEnv(ngym.TrialEnv):
-    metadata = {'render.modes' : 'rgb_array'}
 
     def __init__(self, dt=100, timing=None, rewards = None, train = True,show_opp = True,
                 opponent = "all",opponents=None,episodic=False,reset_time = 150,opp_params=None,**opp_kwargs):
